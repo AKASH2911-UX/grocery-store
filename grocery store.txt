@@ -1,0 +1,136 @@
+import csv
+import os
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+DATA_FILE = "inventory.csv"
+
+class AdvancedGroceryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Grocery Store Management System")
+        self.root.geometry("750x550")
+        self.root.config(bg="#f4f6f9")
+
+        # Initialize data file if not exists
+        self.init_file()
+
+        # Title Label
+        title_label = tk.Label(root, text="Grocery Store Management", font=("Arial", 18, "bold"), bg="#f4f6f9", fg="#333")
+        title_label.pack(pady=10)
+
+        # Frame for Input Form
+        form_frame = tk.LabelFrame(root, text=" Add / Update Product ", font=("Arial", 12, "bold"), bg="#f4f6f9", padx=10, pady=10)
+        form_frame.pack(fill="x", padx=20, pady=5)
+
+        tk.Label(form_frame, text="Product ID:", bg="#f4f6f9").grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        self.id_entry = tk.Entry(form_frame)
+        self.id_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        tk.Label(form_frame, text="Product Name:", bg="#f4f6f9").grid(row=0, column=2, sticky="w", padx=5, pady=5)
+        self.name_entry = tk.Entry(form_frame)
+        self.name_entry.grid(row=0, column=3, padx=5, pady=5)
+
+        tk.Label(form_frame, text="Price (₹):", bg="#f4f6f9").grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        self.price_entry = tk.Entry(form_frame)
+        self.price_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        tk.Label(form_frame, text="Quantity:", bg="#f4f6f9").grid(row=1, column=2, sticky="w", padx=5, pady=5)
+        self.qty_entry = tk.Entry(form_frame)
+        self.qty_entry.grid(row=1, column=3, padx=5, pady=5)
+
+        btn_frame = tk.Frame(form_frame, bg="#f4f6f9")
+        btn_frame.grid(row=2, column=0, columnspan=4, pady=10)
+
+        tk.Button(btn_frame, text="Add Product", bg="#28a745", fg="white", font=("Arial", 10, "bold"), width=15, command=self.add_product).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Clear Fields", bg="#6c757d", fg="white", font=("Arial", 10, "bold"), width=15, command=self.clear_fields).pack(side="left", padx=5)
+
+        # Inventory Table View (Treeview)
+        table_frame = tk.Frame(root)
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        columns = ("ID", "Name", "Price", "Quantity")
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings")
+        
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=150, anchor="center")
+
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Load initial data to table
+        self.load_table_data()
+
+    def init_file(self):
+        if not os.path.exists(DATA_FILE):
+            with open(DATA_FILE, mode="w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["ID", "Name", "Price", "Quantity"])
+
+    def load_table_data(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, mode="r") as file:
+                reader = csv.reader(file)
+                next(reader, None)  # Skip header
+                for row in reader:
+                    if row:
+                        self.tree.insert("", "end", values=row)
+
+    def add_product(self):
+        pid = self.id_entry.get().strip()
+        name = self.name_entry.get().strip()
+        price = self.price_entry.get().strip()
+        qty = self.qty_entry.get().strip()
+
+        if not pid or not name or not price or not qty:
+            messagebox.showerror("Error", "All fields are required!")
+            return
+
+        try:
+            price = float(price)
+            qty = int(qty)
+        except ValueError:
+            messagebox.showerror("Error", "Price must be a number and Quantity must be an integer!")
+            return
+
+        # Check for duplicate ID and update or append
+        rows = []
+        updated = False
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, mode="r") as file:
+                reader = csv.reader(file)
+                for row in reader:
+                    if row and row[0] == pid:
+                        rows.append([pid, name, price, qty])
+                        updated = True
+                    elif row:
+                        rows.append(row)
+
+        if not updated:
+            rows.append([pid, name, price, qty])
+
+        with open(DATA_FILE, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerows(rows)
+
+        messagebox.showinfo("Success", f"Product '{name}' saved successfully!")
+        self.clear_fields()
+        self.load_table_data()
+
+    def clear_fields(self):
+        self.id_entry.delete(0, tk.END)
+        self.name_entry.delete(0, tk.END)
+        self.price_entry.delete(0, tk.END)
+        self.qty_entry.delete(0, tk.END)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AdvancedGroceryApp(root)
+    root.mainloop()
